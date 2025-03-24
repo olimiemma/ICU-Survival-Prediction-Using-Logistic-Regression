@@ -2,7 +2,8 @@
 
 This project analyzes ICU (Intensive Care Unit) patient data using **logistic regression** to predict **survival to hospital discharge** based on various patient characteristics. It demonstrates how statistical modeling can uncover important insights into healthcare outcomes and risk factors.
 
-![Uploading Screenshot from 2025-03-23 20-16-08.png…]()
+![Screenshot from 2025-03-23 20-16-08](https://github.com/user-attachments/assets/aa40db8c-3e1d-42ef-b983-63b17450e799)
+
 ---
 
 ## 🔍 Project Overview
