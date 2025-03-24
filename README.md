@@ -92,7 +92,7 @@ data("icu")
 ## ✍️ Author
 
 **Emmanuel Olimi**  
-Data Scientist | Educator | Storyteller  
+Data Scientist |Entreprenuer| Storyteller  
 Connect: [https://linktr.ee/olimiemma](https://linktr.ee/olimiemma)
 
 ---
