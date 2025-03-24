@@ -1,0 +1,796 @@
+---
+title: "Logistic Regression"
+author: "Emmanuel Kasigazi"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+editor_options:
+  chunk_output_type: console
+  markdown: 
+    wrap: 72
+---
+
+This lab introduces simple logistic regression, a model for the
+association of a binary response variable with a single predictor
+variable. Logistic regression generalizes methods for two-way tables and
+allows for the use of a numerical predictor.
+
+The material in this lab corresponds to Section 9.xx in *OpenIntro
+Statistics*.
+
+### Introduction
+
+*Odds and probabilities*
+
+If the probability of an event $A$ is $p$, the odds of the event are
+$$\dfrac{p}{1 - p}. $$
+
+Given the odds of an event $A$, the probability of the event is
+$$\dfrac{\text{odds}}{1 + \text{odds}}. $$
+
+*Simple logistic regression*
+
+Suppose that $Y$ is a binary response variable and $X$ is a predictor
+variable, where $Y = 1$ represents the particular outcome of interest.
+
+The model for a single variable logistic regression, where
+$p(x) = P(Y = 1 | X = x)$, is
+$$\text{log} \left[ \dfrac{p(x)}{1 - p(x)} \right] = \beta_0 + \beta_1 x. $$
+
+The estimated model equation has the form
+$$\text{log} \left[ \dfrac{\hat{p}(x)}{1 - \hat{p}(x)} \right] = b_0 + b_1 x, $$
+where $b_0$ and $b_1$ are estimates of the model parameters $\beta_0$
+and $\beta_1$.
+
+### Background Information
+
+Patients admitted to an intensive care unit (ICU) are either extremely
+ill or considered to be at great risk of serious complications. There
+are no widely accepted criteria for distinguishing between patients who
+should be admitted to an ICU and those for whom admission to other
+hospital units would be more appropriate. Thus, among different ICUs,
+there are wide ranges in a patient's chance of survival. When studies
+are done to compare effectiveness of ICU care, it is critical to have a
+reliable means of assessing the comparability of the different patient
+populations.
+
+One such strategy for doing so involves the use of statistical modeling
+to relate empirical data for many patient variables to outcomes of
+interest. The following dataset consists of a sample of 200 subjects who
+were part of a much larger study on survival of patients following
+admission to an adult
+ICU.\footnote{From Hosmer D.W., Lemeshow, S., and Sturdivant, R.X. \textit{Applied Logistic Regression}. 3$^{rd}$ ed., 2013.}
+The major goal of the study was to develop a logistic regression model
+to predict the probability of survival to hospital
+discharge.\footnote{Lemeshow S., et al. Predicting the outcome of intensive care unit patients. \textit{Journal of the American Statistical Association} 83.402 (1988): 348-356.}
+
+The following table provides a list of the variables in the dataset and
+their description. The data are accessible as the \texttt{icu} dataset
+in the \texttt{aplore3} package.
+
+\begin{center}
+\begin{tabular}{r|l}
+\textbf{Variable} & \textbf{Description} \\
+\hline
+\texttt{id} & patient ID number \\
+\texttt{sta} & patient status at discharge, either \texttt{Lived} or \texttt{Died} \\
+\texttt{age} & age in years (when admitted) \\
+\texttt{gender} & gender, either \texttt{Male} or \texttt{Female} \\
+\texttt{can} & cancer part of current issue, either \texttt{No} or \texttt{Yes} \\
+\texttt{crn} & history of chronic renal failure, either \texttt{No} or \texttt{Yes}\\
+\texttt{inf} & infection probable at admission, either \texttt{No} or \texttt{Yes} \\
+\texttt{cpr} & CPR prior to admission, either \texttt{No} or \texttt{Yes} \\
+\texttt{sys} & systolic blood pressure at admission, in mm Hg \\
+\texttt{hra} & heart rate at admission, in beats per minute \\
+\texttt{pre} & previous admission to an ICU within 6 months, either \texttt{No} or \texttt{Yes} \\
+\texttt{type} & type of admission, either \texttt{Elective} or \texttt{Emergency} \\
+\texttt{fra} & long bone, multiple, neck, single area, or hip fracture, either \texttt{No} or \texttt{Yes} \\
+\texttt{po2} & $PO_2$ from initial blood gases, either \texttt{60} or \texttt{<=60}, in mm Hg\\
+\texttt{ph} & $pH$ from initial blood gases, either \texttt{>= 7.25} or \texttt{< 7.25} \\
+\texttt{pco} & $PCO_2$ from initial blood gases, either \texttt{<= 45} or \texttt{>45}, in mm Hg \\
+\texttt{bic} & $HCO_3$ (bicarbonate) from initial blood gases, either \texttt{>= 18} or \texttt{<18}, in mm Hg \\
+\texttt{cre} & creatinine from initial blood gases, either \texttt{<= 2.0} or \texttt{> 2.0}, in mg/dL \\
+\texttt{loc} & level of consciousness at admission, either \texttt{Nothing}, \texttt{Stupor}, or \texttt{Coma}
+\end{tabular}
+\end{center}
+
+### Odds and probabilities
+
+1.  Create a two-way table of survival to discharge by whether CPR was
+    administered prior to admission. The template provides code for
+    re-leveling the \texttt{sta} variable such that \texttt{0}
+    corresponds to \texttt{Died} and \texttt{1} corresponds to
+    \texttt{Lived}.
+
+```{r, eval = FALSE}
+#install the package (only needs to be done once)
+install.packages("aplore3")
+```
+
+```{r, warning = FALSE}
+#load the data
+library(aplore3)
+data("icu")
+
+#relevel survival so that 1 corresponds to surviving to discharge
+icu$sta = factor(icu$sta, levels = rev(levels(icu$sta)))
+
+#create two-way table
+addmargins(table(icu$sta, icu$cpr,
+                 dnn = c("Survival", "Prior CPR")))
+```
+
+a)  Calculate the odds of survival to discharge for those who did not
+    receive CPR prior to ICU admission. Is someone who did not receive
+    CPR prior to admission more likely to survive to discharge than to
+    not survive to discharge?
+
+```{r}
+#use r as a calculator
+# Using the table that was already created
+cpr_table <- table(icu$sta, icu$cpr)
+
+# Calculate odds of survival for patients without prior CPR
+odds_no_cpr <- cpr_table["Lived", "No"] / cpr_table["Died", "No"]
+
+# Print the odds
+odds_no_cpr
+
+# Check if odds are greater than 1
+odds_no_cpr > 1
+```
+
+```         
+The odds of survival for patients without prior CPR are:
+```
+
+Odds = Number who survived / Number who died Odds = 154 / 33 Odds = 4.67
+
+This means that for patients who did not receive CPR prior to ICU
+admission, the odds of survival to discharge are 4.67 to 1.
+
+Since the odds are greater than 1 (4.67 \> 1), patients who did not
+receive CPR prior to admission are more likely to survive to discharge
+than to not survive to discharge. In fact, they are about 4.67 times
+more likely to survive than to die.
+
+b)  Calculate the odds of survival to discharge for those who received
+    CPR prior to ICU admission. Is someone who received CPR prior to
+    admission more likely to survive to discharge than not?
+
+```{r}
+#use r as a calculator
+# Using the table that was already created
+cpr_table <- table(icu$sta, icu$cpr)
+
+# Calculate odds of survival for patients with prior CPR
+odds_yes_cpr <- cpr_table["Lived", "Yes"] / cpr_table["Died", "Yes"]
+
+# Print the odds
+odds_yes_cpr
+
+# Check if odds are greater than 1
+odds_yes_cpr > 1
+
+```
+
+Since these odds are less than 1 (0.857 \< 1), patients who received CPR
+prior to ICU admission are NOT more likely to survive to discharge than
+to die.
+
+The odds ratio of 0.857 means that for every 10 patients with prior CPR
+who die, approximately 8-9 patients with prior CPR survive.
+
+c)  Calculate the odds ratio of survival to discharge, comparing
+    patients who receive CPR prior to admission to those who do not
+    receive CPR prior to admission.
+
+```{r}
+#use r as a calculator
+    
+# Using the table that was already created
+cpr_table <- table(icu$sta, icu$cpr)
+
+# Calculate odds of survival for each group
+odds_yes_cpr <- cpr_table["Lived", "Yes"] / cpr_table["Died", "Yes"]
+odds_no_cpr <- cpr_table["Lived", "No"] / cpr_table["Died", "No"]
+
+# Calculate odds ratio (comparing CPR Yes to CPR No)
+odds_ratio <- odds_yes_cpr / odds_no_cpr
+
+# Print the odds ratio
+odds_ratio
+
+```
+
+The odds ratio is: OR = 0.857/4.667 = 0.184 This means that the odds of
+survival for patients who received CPR prior to admission are only about
+18.4% of the odds for patients who didn't receive CPR.
+
+In other words, patients who received CPR prior to admission have
+approximately 5.4 times lower odds of survival compared to patients who
+didn't receive CPR.
+
+2.  Creatinine level in the data are recorded as being either less than
+    or equal to 2.0 mg/dL or greater than 2.0 mg/dL. A typical
+    creatinine level is between 0.5 - 1.0 mg/dL, and elevated creatinine
+    may be a sign of renal failure.
+
+```{r}
+#create two-way table  table for creatinine and survival
+
+addmargins(table(icu$sta, icu$cre, 
+                 dnn = c("Survival", "Creatinine")))
+```
+
+```{r}
+#Odds of survival for patients with creatinine ≤2.0 mg/dL
+odds_normal_cre <- 155/35
+odds_normal_cre  # This equals 4.43
+```
+
+```{r}
+#Odds of survival for patients with creatinine >2.0 mg/dL
+odds_high_cre <- 5/5
+odds_high_cre  # This equals 1.0
+```
+
+```{r}
+#Odds ratio comparing high creatinine to normal creatinine:
+odds_ratio <- odds_high_cre/odds_normal_cre
+odds_ratio  # This equals approximately 0.226
+```
+
+This means:
+
+-Patients with normal creatinine (≤2.0 mg/dL) have 4.43 times higher
+odds of surviving than dying
+
+-Patients with elevated creatinine (\>2.0 mg/dL) have equal odds of
+surviving or dying (1:1) -The odds of survival for patients with
+elevated creatinine are only about 22.6% of the odds for patients with
+normal creatinine
+
+-Only 5% of patients in the sample (10/200) had elevated creatinine
+levels
+
+These results suggest that elevated creatinine, which can indicate
+kidney dysfunction, is associated with reduced odds of survival in ICU
+patients
+
+a)  Calculate the odds of survival to discharge for patients who have a
+    creatinine level less than or equal to 2.0 mg/dL. From the odds,
+    calculate the probability of survival to discharge for these
+    patients.
+
+```{r}
+#use r as a calculator
+# From the table data
+survived_normal_cre <- 155
+died_normal_cre <- 35
+
+# Calculate odds:  Odds of survival for patients with creatinine ≤2.0 mg/dL:
+odds_normal_cre <- survived_normal_cre / died_normal_cre
+odds_normal_cre  # This equals 4.43
+```
+
+The odds of survival for patients with creatinine ≤2.0 mg/dL are 4.43 to
+1.
+
+```{r}
+# Convert odds to probability
+probability_normal_cre <- odds_normal_cre / (1 + odds_normal_cre)
+probability_normal_cre  # This equals approximately 0.816
+```
+
+The probability of survival to discharge for patients with creatinine
+≤2.0 mg/dL is approximately 0.816 or 81.6%.
+
+```{r}
+#This can also be calculated directly from the table as the proportion:
+probability_normal_cre <- 155 / 190
+probability_normal_cre  # This equals approximately 0.816
+```
+
+Patients admitted to ICU with creatinine levels of ≤ 2.0 mg/dL have a
+high probability (81.6%) of surviving to discharge, reflecting
+relatively less severe renal impairment at admission.
+
+b)  Calculate the probability of survival to discharge for patients who
+    have a creatinine level greater than 2.0 mg/dL. From the
+    probability, calculate the odds of survival to discharge for these
+    patients.
+
+```{r}
+#use r as a calculator
+#calculate the probability directly from the table:
+# From the table data
+survived_high_cre <- 5
+total_high_cre <- 10
+
+# Calculate probability of survival
+probability_high_cre <- survived_high_cre / total_high_cre
+probability_high_cre  # This equals 0.5 or 50%
+
+```
+
+```{r}
+# Convert probability to odds
+odds_high_cre <- probability_high_cre / (1 - probability_high_cre)
+odds_high_cre  # This equals 1.0
+```
+
+Patients with creatinine levels greater than 2.0 mg/dL have a
+significantly reduced probability (50%) of survival compared to those
+with lower creatinine levels.
+
+Their odds of survival (1.0) reflect equal likelihood of survival and
+non-survival, signaling substantially higher clinical risk or illness
+severity.
+
+c)  Compute and interpret the odds ratio of survival to discharge,
+    comparing patients with creatinine $> 2.0$ mg/dL to those with
+    creatinine $\leq$ 2.0 mg/dL.
+
+```{r}
+#use r as a calculator
+# Calculate odds ratio (comparing high creatinine to normal creatinine)
+odds_ratio <- 1.0 / 4.43
+odds_ratio  # This equals approximately 0.226
+```
+
+Odds Ratio = 0.226 Interpretation: The odds ratio of 0.226 means that
+patients with creatinine levels \>2.0 mg/dL have approximately 22.6% of
+the odds of survival compared to patients with creatinine levels ≤2.0
+mg/dL.
+
+In other words, patients with high creatinine levels have approximately
+4.43 times lower odds of survival compared to those with normal or
+moderately elevated creatinine.
+
+This suggests that severely elevated creatinine levels (\>2.0 mg/dL),
+which can indicate significant kidney dysfunction, are associated with
+substantially reduced odds of survival in ICU patients.
+
+This makes clinical sense, as renal failure is a serious condition that
+can complicate critical illness and increase mortality risk.
+
+### Simple logistic regression
+
+3.  Fit a logistic regression model to predict survival to discharge
+    from prior CPR.
+
+```{r}
+#fit a model
+glm(sta ~ cpr, data = icu, family = binomial(link = "logit"))
+```
+
+a)  Write the model equation estimated from the data.
+
+The estimated model equation from the data is: log[p̂(x)/(1-p̂(x))] =
+1.540 - 1.695 × cprYes
+
+Where:
+
+a)  p̂(x) represents the estimated probability of survival to discharge
+b)  cprYes is 1 if the patient received CPR prior to admission and 0 if
+    they did not
+c)  1.540 is the intercept (β₀)
+d)  -1.695 is the coefficient for prior CPR (β₁)
+
+This logistic regression equation models the log odds of survival based
+on whether the patient received CPR prior to ICU admission.
+
+b)  Interpret the intercept. Confirm that the interpretation coheres
+    with the answer to Question 1, part a).
+
+The intercept (β₀) in our model is 1.540. Interpretation of the
+intercept:
+
+The intercept represents the log odds of survival to discharge for
+patients in the reference group - in this case, patients who did NOT
+receive CPR prior to admission (when cprYes = 0). To interpret this
+value:
+
+Log odds of survival for no CPR = 1.540 Converting from log odds to
+odds: e\^1.540 = 4.67
+
+This means that for patients who did not receive CPR prior to admission,
+the odds of survival to discharge are 4.67 to 1. This interpretation
+coheres perfectly with our answer to Question 1, part a), where we
+calculated the odds of survival for patients without prior CPR as: 154
+(survived) / 33 (died) = 4.67
+
+Both calculations give us the exact same odds value, confirming that the
+intercept in the logistic regression model correctly represents the log
+odds of survival for patients who did not receive CPR before admission.
+
+Confirming with Question 1 (part a): Previously, in Question 1 part (a),
+we calculated the odds and probability of survival for patients without
+prior CPR directly from the two-way table:
+
+Odds previously calculated: 154/33≈4.67 154/33≈4.67
+
+Probability previously calculated: about 82.4%.
+
+This aligns very closely with the logistic regression intercept results
+(Odds ≈ 4.66, Probability ≈ 82.3%).
+
+The logistic regression intercept interpretation perfectly coheres with
+the earlier direct calculation from Question 1(a).
+
+Both analyses consistently indicate a survival probability around 82%
+for patients who did not receive CPR prior to ICU admission.
+
+c)  Interpret the slope coefficient. Compute the exponential of the
+    slope coefficient and confirm that this matches the answer to
+    Question 1, part c).
+
+The slope coefficient (β₁) in our model is -1.695. Interpretation of the
+slope coefficient:
+
+The slope coefficient represents the change in log odds of survival when
+comparing patients who received CPR prior to admission (cprYes = 1) to
+those who did not (cprYes = 0). To interpret this value:
+
+-Change in log odds = -1.695
+
+-Converting to an odds ratio: e\^(-1.695) = 0.184
+
+This means that the odds of survival for patients who received CPR prior
+to admission are 0.184 times the odds for patients who did not receive
+CPR. In other words, patients who received CPR have approximately 81.6%
+lower odds of survival compared to those who didn't.
+
+Computing the exponential of the slope coefficient: e\^(-1.695) = 0.184
+
+This matches exactly with our answer to Question 1, part c), where we
+calculated the odds ratio as: (6/7) ÷ (154/33) = 0.857 ÷ 4.667 = 0.184
+
+Both calculations give us the same odds ratio, confirming that the slope
+coefficient in the logistic regression model correctly represents the
+log odds ratio comparing survival between patients who received CPR and
+those who didn't.
+
+d)  Compute and interpret an odds ratio that summarizes the association
+    between survival to discharge and prior CPR.
+
+```{r}
+#compute odds ratio
+# Using the contingency table approach
+cpr_table <- table(icu$sta, icu$cpr)
+odds_ratio <- (cpr_table["Lived", "Yes"]/cpr_table["Died", "Yes"]) / 
+              (cpr_table["Lived", "No"]/cpr_table["Died", "No"])
+odds_ratio
+```
+
+The odds ratio (0.184) means patients who received CPR prior to ICU
+admission have about 81.6% lower odds of survival compared to patients
+who did not receive prior CPR.
+
+This clearly indicates a strong negative association, suggesting that
+prior CPR reflects severe illness or critical condition associated with
+lower survival likelihood.
+
+e)  Is there evidence of a statistically significant association between
+    survival to discharge and prior CPR at $\alpha = 0.05$?
+
+```{r}
+#use summary(glm( ))
+# Fit the model
+cpr_model <- glm(sta ~ cpr, data = icu, family = binomial)
+
+# Get the summary with p-values
+summary(cpr_model)
+```
+
+The p-value for the cprYes coefficient is 0.00398, which is less than
+the significance level of α = 0.05. Therefore, there is evidence of a
+statistically significant association between survival to discharge and
+prior CPR at α = 0.05.
+
+We can reject the null hypothesis that there is no association between
+prior CPR and survival.
+
+The output shows:
+
+-cprYes coefficient = -1.6946
+
+-Standard error = 0.5885
+
+-z-value = -2.880
+
+-p-value = 0.00398
+
+This significant negative coefficient confirms that patients who
+received CPR prior to ICU admission have significantly lower odds of
+survival compared to those who did not receive CPR.
+
+4.  Fit a logistic regression model to predict survival to discharge
+    from an indicator of elevated creatinine.
+
+```{r}
+#fit the model
+# Fit logistic regression model with creatinine as predictor
+cre_model <- glm(sta ~ cre, data = icu, family = binomial(link = "logit"))
+
+# Display model summary
+summary(cre_model)
+```
+
+a)  Write the model equation estimated from the data.
+
+The model equation is: log[p̂(x)/(1-p̂(x))] = 1.4881 - 1.4881 × cre\>2.0
+
+Where:
+
+-The intercept (1.4881) represents the log odds of survival for patients
+with creatinine ≤2.0 mg/dL
+
+-The coefficient for elevated creatinine (-1.4881) indicates that having
+creatinine \>2.0 mg/dL is associated with lower odds of survival
+
+-The p-value for the creatinine coefficient (0.0241) is statistically
+significant at α=0.05
+
+Converting to odds:
+
+-For normal creatinine: e\^1.4881 = 4.43 (matching our earlier
+calculation of 155/35)
+
+-For elevated creatinine: e\^(1.4881-1.4881) = e\^0 = 1.0 (matching our
+earlier calculation of 5/5)
+
+The odds ratio comparing elevated to normal creatinine is: e\^(-1.4881)
+= 0.226
+
+This means patients with elevated creatinine have approximately 22.6% of
+the odds of survival compared to those with normal creatinine levels.
+
+b)  Interpret the intercept and slope coefficient.
+
+Interpreting the intercept and slope coefficient from the logistic
+regression model:
+
+Intercept (1.4881): The intercept represents the log odds of survival to
+discharge for patients in the reference group - those with creatinine
+≤2.0 mg/dL.
+
+Converting this to odds: e\^1.4881 = 4.43, meaning that patients with
+normal or moderately elevated creatinine have odds of 4.43 to 1 of
+surviving to discharge.
+
+This tells us that these patients are more than four times as likely to
+survive than to die.
+
+Slope coefficient (-1.4881): The coefficient for "cre\> 2.0" represents
+the change in log odds of survival when comparing patients with
+creatinine \>2.0 mg/dL to the reference group.
+
+The negative value indicates that elevated creatinine is associated with
+lower odds of survival. Specifically, the log odds of survival decrease
+by 1.4881 when a patient has creatinine \>2.0 mg/dL.
+
+Converting this to an odds ratio: e\^(-1.4881) = 0.226, meaning that
+patients with elevated creatinine have only 22.6% of the odds of
+survival compared to patients with creatinine ≤2.0 mg/dL.
+
+c)  Compute and interpret an odds ratio that summarizes the association
+    between survival to discharge and an indicator of elevated
+    creatinine.
+
+```{r}
+#compute odds ratio
+# Compute odds ratio from model coefficient
+exp(coef(cre_model)["cre> 2.0"])
+```
+
+Interpretation of the odds ratio: The odds ratio of 0.226 means that
+patients with elevated creatinine (\>2.0 mg/dL) have approximately 22.6%
+of the odds of survival to discharge compared to patients with normal or
+moderately elevated creatinine (≤2.0 mg/dL).
+
+In other words, patients with high creatinine levels have approximately
+4.43 times lower odds of survival. This odds ratio quantifies the
+negative association between elevated creatinine and survival,
+suggesting that kidney dysfunction (as indicated by high creatinine) is
+associated with substantially reduced odds of survival in ICU patients.
+
+The statistically significant p-value (0.0241) indicates that this
+association is unlikely to be due to chance.
+
+In short: Elevated creatinine (\>2.0 mg/dL) is strongly associated with
+decreased odds of survival, underscoring its significance as an
+indicator of higher mortality risk among ICU patients.
+
+d)  Is there evidence of a statistically significant association between
+    survival to discharge and an indicator of elevated creatinine at
+    $\alpha = 0.05$?
+
+```{r}
+# Fit the model
+cre_model <- glm(sta ~ cre, data = icu, family = binomial)
+
+# Extract the p-value for the creatinine coefficient
+summary(cre_model)$coefficients["cre> 2.0", "Pr(>|z|)"]
+
+# Compare to alpha level
+summary(cre_model)$coefficients["cre> 2.0", "Pr(>|z|)"] < 0.05
+
+```
+
+The p-value for the "cre\> 2.0" coefficient is 0.0241, which is less
+than our significance level of α = 0.05.
+
+Therefore, there is evidence of a statistically significant association
+between survival to discharge and elevated creatinine at α = 0.05.
+
+We can reject the null hypothesis that there is no association between
+elevated creatinine and survival.
+
+This confirms that elevated creatinine levels are significantly
+associated with lower odds of survival in ICU patients, which aligns
+with clinical expectations since impaired kidney function (as indicated
+by high creatinine) often complicates critical illness.
+
+5.  Fit a logistic regression model to predict survival to discharge
+    from age.
+
+```{r}
+#fit the model
+# Fit logistic regression model with age as predictor
+age_model <- glm(sta ~ age, data = icu, family = binomial(link = "logit"))
+
+# Display model summary
+summary(age_model)
+
+```
+
+Older age is statistically significantly associated with decreased odds
+of ICU patient survival.
+
+Age is a meaningful predictor of survival in ICU patients, reflecting
+clinical expectations that older patients have generally worse outcomes.
+
+a)  Write the model equation estimated from the data. The fitted
+    logistic regression model for predicting survival to discharge from
+    age is: log[p̂(x)/(1-p̂(x))] = 3.05851 - 0.02754 × age
+
+This model has:
+
+Intercept (β₀): 3.05851 Age coefficient (β₁): -0.02754
+
+The model shows that age has a statistically significant negative
+association with survival (p=0.00913), indicating that older patients
+have lower odds of survival to discharge.
+
+For each one-year increase in age, the log odds of survival decrease by
+0.02754, which corresponds to a multiplicative change in odds of
+e\^(-0.02754) = 0.973.
+
+This means the odds of survival decrease by approximately 2.7% for each
+additional year of age. The intercept (3.05851) represents the log odds
+of survival for a theoretical patient with age=0, which isn't directly
+interpretable in this context since we don't have newborns in an adult
+ICU.
+
+b)  Does the intercept have a meaningful interpretation in the context
+    of the data?
+
+No, the intercept in this logistic regression model doesn't have a
+meaningful interpretation in the context of the data.
+
+The intercept (3.05851) represents the log odds of survival for a
+patient with age = 0, which isn't meaningful since:
+
+-The dataset contains adult ICU patients, not newborns
+
+-A patient with age = 0 is outside the range of the observed data
+
+-Extrapolating to age = 0 isn't clinically relevant
+
+When working with continuous predictors like age, the intercept often
+lacks practical interpretation because it represents a scenario outside
+the realistic domain of the data. Instead, it's more useful to calculate
+the predicted log odds or probability of survival for specific,
+clinically relevant ages within the range of the observed data.
+
+A more meaningful approach would be to center the age variable around
+its mean or a clinically relevant value, which would give the intercept
+an interpretable meaning as the log odds for a patient of that reference
+age.
+
+c)  Interpret the slope coefficient.
+
+The slope coefficient for age in the model is -0.02754. Interpretation
+of the slope coefficient: For each one-year increase in a patient's age,
+the log odds of survival to discharge decrease by 0.02754, holding all
+other variables constant.
+
+To make this more intuitive, we can convert from log odds to an odds
+ratio:
+
+Odds ratio = e\^(-0.02754) = 0.973
+
+This means that for each additional year of age, the odds of survival to
+discharge multiply by a factor of 0.973, which represents a decrease of
+approximately 2.7% in the odds of survival per year of age.
+
+In clinical terms, this indicates that older ICU patients have
+progressively lower odds of survival compared to younger patients, with
+each year of age associated with a small but statistically significant
+reduction in survival odds. This finding aligns with clinical
+expectations, as advanced age is a known risk factor for poorer outcomes
+in critical illness.
+
+d)  Calculate the odds of survival to discharge for a 70-year-old
+    individual. Is a 70-year-old individual more likely to survive than
+    not?
+
+```{r}
+#use r as a calculator
+# Calculate log odds for a 70-year-old
+log_odds_70 <- 3.05851 - 0.02754 * 70
+
+# Convert log odds to odds
+odds_70 <- exp(log_odds_70)
+
+# Print the odds
+odds_70
+
+# Check if odds are greater than 1
+odds_70 > 1
+
+#alternatively, use predict()...
+
+
+```
+
+This means that a 70-year-old patient has odds of approximately 3.098 to
+1 of surviving to discharge. Since these odds are greater than 1 (3.098
+\> 1), a 70-year-old individual is more likely to survive than not.
+
+Specifically, for every 70-year-old patient who dies, we expect about
+3.098 patients of the same age to survive.
+
+I could also convert this to a probability: Probability = odds/(1+odds)
+= 3.098/(1+3.098) = 0.756 This means a 70-year-old patient has
+approximately a 75.6% probability of surviving to discharge.Retry
+
+e)  Calculate the odds ratio of survival to discharge comparing a
+    45-year-old individual to a 70-year-old individual.
+
+```{r}
+#use r as a calculator
+# Odds ratio using the slope coefficient directly
+age_difference <- 45 - 70
+odds_ratio <- exp(-0.02754 * age_difference)
+odds_ratio
+
+```
+
+```{r}
+#alternatively, use predict()...
+# Calculate the log odds for a 45-year-old
+log_odds_45 <- 3.05851 - 0.02754 * 45
+
+# Calculate the log odds for a 70-year-old
+log_odds_70 <- 3.05851 - 0.02754 * 70
+
+# Calculate odds for each age
+odds_45 <- exp(log_odds_45)
+odds_70 <- exp(log_odds_70)
+
+# Calculate the odds ratio
+odds_ratio_45_vs_70 <- odds_45 / odds_70
+
+# Print the odds ratio
+odds_ratio_45_vs_70
+
+```
+
+This odds ratio of 1.99 means that a 45-year-old patient has
+approximately 1.99 times the odds of survival to discharge compared to a
+70-year-old patient. In other words, the odds of survival for a
+45-year-old are about twice those of a 70-year-old.
